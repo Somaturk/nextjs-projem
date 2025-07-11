@@ -316,43 +316,54 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
         async function loadData() {
             setIsLoading(true);
             try {
-                const allAssets: Record<string, Asset[]> = {};
-                const initialPrices: Record<string, number> = {};
-                let usdToTryRate = 1;
+                const allAssetsResult: Record<string, Asset[]> = {};
+                const initialPricesResult: Record<string, number> = {};
 
                 // 1. Fetch currency first to get USD rate
                 const currencyAssets = await getAvailableAssets('currency');
-                allAssets['currency'] = currencyAssets;
+                let usdToTryRate = 1;
+
+                allAssetsResult['currency'] = currencyAssets;
                 currencyAssets.forEach(asset => {
-                    initialPrices[`currency-${asset.symbol}`] = asset.currentPrice;
-                    initialPrices[`currency-${asset.symbol}-buy`] = asset.buyingPrice ?? 0;
-                    initialPrices[`currency-${asset.symbol}-sell`] = asset.sellingPrice ?? 0;
+                    const baseKey = `currency-${asset.symbol}`;
+                    initialPricesResult[baseKey] = asset.currentPrice;
+                    initialPricesResult[`${baseKey}-buy`] = asset.buyingPrice ?? 0;
+                    initialPricesResult[`${baseKey}-sell`] = asset.sellingPrice ?? 0;
                     if (asset.symbol === 'USD') {
                         usdToTryRate = asset.currentPrice;
                     }
                 });
-                
-                // 2. Fetch other assets
-                const otherAssetTypes = assetTypes.filter(t => t !== 'currency' && t !== 'cash' && t !== 'deposit');
 
-                const assetPromises = otherAssetTypes.map(async (type) => {
-                    const assets = await getAvailableAssets(type, usdToTryRate);
-                    allAssets[type] = assets;
+                // Set currency data first
+                setAvailableAssets(prev => ({...prev, ...allAssetsResult}));
+                setLivePrices(prev => ({...prev, ...initialPricesResult}));
+                
+                // 2. Fetch all other assets in parallel
+                const otherAssetTypes = assetTypes.filter(t => t !== 'currency' && t !== 'cash' && t !== 'deposit');
+                
+                const assetPromises = otherAssetTypes.map(type => getAvailableAssets(type, usdToTryRate));
+                
+                const allOtherAssetsData = await Promise.all(assetPromises);
+
+                allOtherAssetsData.forEach((assets, index) => {
+                    const type = otherAssetTypes[index];
+                    allAssetsResult[type] = assets;
                     assets.forEach(asset => {
-                        initialPrices[`${type}-${asset.symbol}`] = asset.currentPrice;
+                        const baseKey = `${type}-${asset.symbol}`;
+                        initialPricesResult[baseKey] = asset.currentPrice;
                         if (asset.buyingPrice) {
-                            initialPrices[`${type}-${asset.symbol}-buy`] = asset.buyingPrice;
+                            initialPricesResult[`${baseKey}-buy`] = asset.buyingPrice;
                         }
                         if (asset.sellingPrice) {
-                            initialPrices[`${type}-${asset.symbol}-sell`] = asset.sellingPrice;
+                            initialPricesResult[`${baseKey}-sell`] = asset.sellingPrice;
                         }
                     });
                 });
-                
-                await Promise.all(assetPromises);
 
-                setAvailableAssets(allAssets);
-                setLivePrices(initialPrices);
+                // Set all data at once after fetching everything
+                setAvailableAssets(allAssetsResult);
+                setLivePrices(initialPricesResult);
+
             } catch (error) {
                 console.error("Failed to load initial asset data:", error);
                 toast({

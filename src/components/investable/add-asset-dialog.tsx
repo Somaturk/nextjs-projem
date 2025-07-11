@@ -26,10 +26,10 @@ import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import type { Asset, AssetType } from '@/lib/market-data';
 import { assetTypeTranslations } from '@/lib/market-data';
-import { PlusCircle, Check, ChevronsUpDown } from 'lucide-react';
+import { PlusCircle, Check, ChevronsUpDown, Pencil } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const formSchema = z.object({
@@ -49,7 +49,6 @@ interface AddAssetDialogProps {
 }
 
 export default function AddAssetDialog({ assetType, availableAssets, onAddAsset, isOpen, onOpenChange, livePrices }: AddAssetDialogProps) {
-    const [openCombobox, setOpenCombobox] = useState(false);
     
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -64,6 +63,10 @@ export default function AddAssetDialog({ assetType, availableAssets, onAddAsset,
     const selectedAssetSymbol = form.watch('assetSymbol');
     const amount = form.watch('amount');
     const purchasePrice = form.watch('purchasePrice');
+    
+    const selectedAsset = useMemo(() => {
+        return availableAssets.find(asset => asset.symbol === selectedAssetSymbol);
+    }, [selectedAssetSymbol, availableAssets]);
 
     const currentPrice = useMemo(() => {
         if (!selectedAssetSymbol) return null;
@@ -112,109 +115,110 @@ export default function AddAssetDialog({ assetType, availableAssets, onAddAsset,
                                 control={form.control}
                                 name="assetSymbol"
                                 render={({ field }) => (
-                                    <FormItem className="flex flex-col">
+                                    <FormItem>
                                         <FormLabel>Varlık</FormLabel>
-                                        <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
-                                            <PopoverTrigger asChild>
+                                         <FormControl>
+                                            <div>
+                                                {selectedAsset ? (
+                                                    <div className="flex items-center justify-between rounded-md border border-input p-3">
+                                                        <div>
+                                                            <p className="font-semibold">{selectedAsset.symbol} - {selectedAsset.name}</p>
+                                                            <p className="text-sm text-muted-foreground">
+                                                                Anlık Fiyat: {currentPrice ? currentPrice.toLocaleString('tr-TR', { maximumFractionDigits: 4 }) + ' ₺' : 'Yükleniyor...'}
+                                                            </p>
+                                                        </div>
+                                                        <Button variant="ghost" onClick={() => form.setValue('assetSymbol', '')}>
+                                                            <Pencil className="mr-2 h-4 w-4" /> Değiştir
+                                                        </Button>
+                                                    </div>
+                                                ) : (
+                                                    <Command className="rounded-lg border shadow-sm">
+                                                        <CommandInput placeholder="Varlık adı veya sembolü ara..." />
+                                                        <ScrollArea className="h-40">
+                                                            <CommandList>
+                                                                <CommandEmpty>Varlık bulunamadı.</CommandEmpty>
+                                                                <CommandGroup>
+                                                                    {availableAssets.map((asset) => (
+                                                                        <CommandItem
+                                                                            value={`${asset.symbol} ${asset.name}`}
+                                                                            key={asset.symbol}
+                                                                            onSelect={() => {
+                                                                                form.setValue("assetSymbol", asset.symbol, { shouldValidate: true });
+                                                                            }}
+                                                                            className="cursor-pointer"
+                                                                        >
+                                                                            <Check
+                                                                                className={cn(
+                                                                                    "mr-2 h-4 w-4",
+                                                                                    field.value === asset.symbol ? "opacity-100" : "opacity-0"
+                                                                                )}
+                                                                            />
+                                                                            {asset.symbol} - {asset.name}
+                                                                        </CommandItem>
+                                                                    ))}
+                                                                </CommandGroup>
+                                                            </CommandList>
+                                                        </ScrollArea>
+                                                    </Command>
+                                                )}
+                                            </div>
+                                         </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            
+                            {selectedAsset && (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="amount"
+                                        render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Miktar</FormLabel>
+                                            <FormControl>
+                                            <Input type="number" placeholder="örn. 10.5" {...field} value={field.value ?? ''} step="any"/>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                     <div className="grid grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="purchasePrice"
+                                            render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Alış Fiyatı (Opsiyonel)</FormLabel>
                                                 <FormControl>
-                                                    <Button
-                                                        variant="outline"
-                                                        role="combobox"
-                                                        aria-expanded={openCombobox}
-                                                        className={cn(
-                                                            "w-full justify-between",
-                                                            !field.value && "text-muted-foreground"
-                                                        )}
-                                                    >
-                                                        {field.value
-                                                            ? availableAssets.find(
-                                                                  (asset) => asset.symbol === field.value
-                                                              )?.name
-                                                            : "Bir varlık seçin veya arayın..."}
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                    </Button>
+                                                <Input type="number" placeholder={currentPrice ? `Anlık: ${currentPrice.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ₺` : "Birim başına fiyat"} {...field} value={field.value ?? ''} step="any"/>
                                                 </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                <Command>
-                                                    <CommandInput placeholder="Varlık adı veya sembolü ara..." />
-                                                    <CommandList>
-                                                        <CommandEmpty>Varlık bulunamadı.</CommandEmpty>
-                                                        <CommandGroup>
-                                                            {availableAssets.map((asset) => (
-                                                                <CommandItem
-                                                                    value={`${asset.symbol} ${asset.name}`}
-                                                                    key={asset.symbol}
-                                                                    onSelect={() => {
-                                                                        form.setValue("assetSymbol", asset.symbol);
-                                                                        setOpenCombobox(false);
-                                                                    }}
-                                                                >
-                                                                    <Check
-                                                                        className={cn(
-                                                                            "mr-2 h-4 w-4",
-                                                                            field.value === asset.symbol ? "opacity-100" : "opacity-0"
-                                                                        )}
-                                                                    />
-                                                                    {asset.symbol} - {asset.name}
-                                                                </CommandItem>
-                                                            ))}
-                                                        </CommandGroup>
-                                                    </CommandList>
-                                                </Command>
-                                            </PopoverContent>
-                                        </Popover>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="amount"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Miktar</FormLabel>
-                                    <FormControl>
-                                    <Input type="number" placeholder="örn. 10.5" {...field} value={field.value ?? ''} step="any"/>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                                )}
-                            />
-                             <div className="grid grid-cols-2 gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="purchasePrice"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Alış Fiyatı (Opsiyonel)</FormLabel>
-                                        <FormControl>
-                                        <Input type="number" placeholder={currentPrice ? `Anlık: ${currentPrice.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} ₺` : "Birim başına fiyat"} {...field} value={field.value ?? ''} step="any"/>
-                                        </FormControl>
-                                        <FormDescription>
-                                            Boş bırakılırsa anlık fiyat kullanılır.
-                                        </FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="purchaseDate"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Alış Tarihi (Opsiyonel)</FormLabel>
-                                        <FormControl>
-                                            <DatePicker value={field.value} onChange={field.onChange} />
-                                        </FormControl>
-                                        <FormDescription>
-                                            Boş bırakılırsa bugün kabul edilir.
-                                        </FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                            </div>
+                                                <FormDescription>
+                                                    Boş bırakılırsa anlık fiyat kullanılır.
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="purchaseDate"
+                                            render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Alış Tarihi (Opsiyonel)</FormLabel>
+                                                <FormControl>
+                                                    <DatePicker value={field.value} onChange={field.onChange} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Boş bırakılırsa bugün kabul edilir.
+                                                </FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         {totalValue > 0 && (
@@ -227,7 +231,7 @@ export default function AddAssetDialog({ assetType, availableAssets, onAddAsset,
                         )}
 
                         <DialogFooter className="mt-6">
-                            <Button type="submit">
+                            <Button type="submit" disabled={!selectedAssetSymbol || !amount}>
                                 <PlusCircle className="mr-2 h-4 w-4" /> Varlığı Ekle
                             </Button>
                         </DialogFooter>

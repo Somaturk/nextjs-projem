@@ -78,7 +78,7 @@ export default function InfoPage() {
                                 One Y.Z. Yatırım Takip
                             </CardTitle>
                             <CardDescription className="mt-1">
-                                Manisa merkezli bir teknoloji girişimi olan One Yazılım çatısı altında geliştirilmiştir.
+                                Manisa merkezli bir teknoloji girişimi olan One Yazılım çatısı altında, kurucusu Turgay IŞIK tarafından geliştirilmiştir.
                             </CardDescription>
                         </div>
                     </CardHeader>
