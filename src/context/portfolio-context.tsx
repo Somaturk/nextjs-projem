@@ -56,6 +56,8 @@ interface PortfolioContextType {
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
 
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
 export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     const { toast } = useToast();
     const [portfolio, setPortfolio] = useState<PortfolioAsset[]>([]);
@@ -64,6 +66,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
     const [watchlist, setWatchlist] = useState<string[]>([]);
     const [viewMode, setViewMode] = useState<ViewMode>('mobile');
+    const [isDataFromCache, setIsDataFromCache] = useState(false);
 
     useEffect(() => {
         try {
@@ -230,9 +233,12 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 
     const handleClearPortfolio = useCallback(() => {
         setPortfolio([]);
+        localStorage.removeItem('api-cache-assets');
+        localStorage.removeItem('api-cache-prices');
+        localStorage.removeItem('api-cache-timestamp');
         toast({
             title: "Veriler Silindi",
-            description: "Tüm portföy verileriniz başarıyla silindi.",
+            description: "Tüm portföy verileriniz ve önbellek başarıyla silindi.",
         });
     }, [toast]);
 
@@ -313,75 +319,82 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 
 
     useEffect(() => {
-        async function loadData() {
-            setIsLoading(true);
-            try {
-                const allAssetsResult: Record<string, Asset[]> = {};
-                const initialPricesResult: Record<string, number> = {};
+        const loadInitialData = async () => {
+            const now = new Date().getTime();
+            const cachedTimestamp = localStorage.getItem('api-cache-timestamp');
+            const cachedAssets = localStorage.getItem('api-cache-assets');
+            const cachedPrices = localStorage.getItem('api-cache-prices');
 
-                // 1. Fetch currency first to get USD rate
-                const currencyAssets = await getAvailableAssets('currency');
-                let usdToTryRate = 1;
-
-                allAssetsResult['currency'] = currencyAssets;
-                currencyAssets.forEach(asset => {
-                    const baseKey = `currency-${asset.symbol}`;
-                    initialPricesResult[baseKey] = asset.currentPrice;
-                    initialPricesResult[`${baseKey}-buy`] = asset.buyingPrice ?? 0;
-                    initialPricesResult[`${baseKey}-sell`] = asset.sellingPrice ?? 0;
-                    if (asset.symbol === 'USD') {
-                        usdToTryRate = asset.currentPrice;
-                    }
-                });
-
-                // Set currency data first
-                setAvailableAssets(prev => ({...prev, ...allAssetsResult}));
-                setLivePrices(prev => ({...prev, ...initialPricesResult}));
-                
-                // 2. Fetch all other assets in parallel
-                const otherAssetTypes = assetTypes.filter(t => t !== 'currency' && t !== 'cash' && t !== 'deposit');
-                
-                const assetPromises = otherAssetTypes.map(type => getAvailableAssets(type, usdToTryRate));
-                
-                const allOtherAssetsData = await Promise.all(assetPromises);
-
-                allOtherAssetsData.forEach((assets, index) => {
-                    const type = otherAssetTypes[index];
-                    allAssetsResult[type] = assets;
-                    assets.forEach(asset => {
-                        const baseKey = `${type}-${asset.symbol}`;
-                        initialPricesResult[baseKey] = asset.currentPrice;
-                        if (asset.buyingPrice) {
-                            initialPricesResult[`${baseKey}-buy`] = asset.buyingPrice;
-                        }
-                        if (asset.sellingPrice) {
-                            initialPricesResult[`${baseKey}-sell`] = asset.sellingPrice;
-                        }
-                    });
-                });
-
-                // Set all data at once after fetching everything
-                setAvailableAssets(allAssetsResult);
-                setLivePrices(initialPricesResult);
-
-            } catch (error) {
-                console.error("Failed to load initial asset data:", error);
-                toast({
-                    variant: "destructive",
-                    title: "Veri Yükleme Hatası",
-                    description: "Piyasa verileri yüklenirken bir sorun oluştu. Lütfen daha sonra tekrar deneyin.",
-                });
-            } finally {
+            if (cachedTimestamp && cachedAssets && cachedPrices && (now - Number(cachedTimestamp) < CACHE_DURATION)) {
+                console.log("Loading API data from cache.");
+                setAvailableAssets(JSON.parse(cachedAssets));
+                setLivePrices(JSON.parse(cachedPrices));
+                setIsDataFromCache(true);
                 setIsLoading(false);
+            } else {
+                console.log("Fetching new API data.");
+                setIsDataFromCache(false);
+                setIsLoading(true);
+                try {
+                    // First, fetch currencies to get the USD/TRY rate
+                    const currencyAssets = await getAvailableAssets('currency');
+                    const usdToTryRate = currencyAssets.find(c => c.symbol === 'USD')?.currentPrice || 1;
+    
+                    const newAssets: Record<string, Asset[]> = { 'currency': currencyAssets };
+                    const newPrices: Record<string, number> = {};
+                    currencyAssets.forEach(asset => {
+                        const baseKey = `currency-${asset.symbol}`;
+                        newPrices[baseKey] = asset.currentPrice;
+                        if(asset.buyingPrice) newPrices[`${baseKey}-buy`] = asset.buyingPrice;
+                        if(asset.sellingPrice) newPrices[`${baseKey}-sell`] = asset.sellingPrice;
+                    });
+    
+                    // Then, fetch other assets in parallel using the obtained USD/TRY rate
+                    const otherAssetTypes = assetTypes.filter(type => type !== 'currency' && type !== 'cash' && type !== 'deposit');
+                    const assetPromises = otherAssetTypes.map(type => getAvailableAssets(type, usdToTryRate));
+    
+                    const otherAssetsData = await Promise.all(assetPromises);
+    
+                    otherAssetsData.forEach((assets, index) => {
+                        const type = otherAssetTypes[index];
+                        newAssets[type] = assets;
+                        assets.forEach(asset => {
+                            const baseKey = `${type}-${asset.symbol}`;
+                            newPrices[baseKey] = asset.currentPrice;
+                            if (asset.buyingPrice) newPrices[`${baseKey}-buy`] = asset.buyingPrice;
+                            if (asset.sellingPrice) newPrices[`${baseKey}-sell`] = asset.sellingPrice;
+                        });
+                    });
+    
+                    setAvailableAssets(newAssets);
+                    setLivePrices(newPrices);
+    
+                    // Save to cache
+                    localStorage.setItem('api-cache-assets', JSON.stringify(newAssets));
+                    localStorage.setItem('api-cache-prices', JSON.stringify(newPrices));
+                    localStorage.setItem('api-cache-timestamp', String(now));
+    
+                } catch (error) {
+                    console.error("Failed to load initial asset data:", error);
+                    toast({
+                        variant: "destructive",
+                        title: "Veri Yükleme Hatası",
+                        description: "Piyasa verileri yüklenirken bir sorun oluştu. Lütfen daha sonra tekrar deneyin.",
+                    });
+                } finally {
+                    setIsLoading(false);
+                }
             }
-        }
-        if (!Object.keys(availableAssets).length) {
-            loadData();
-        }
-    }, [toast, availableAssets]);
+        };
+    
+        loadInitialData();
+    }, [toast]);
+
 
     useEffect(() => {
-        if (isLoading) return;
+        // Run simulation only if data is not from cache and not loading
+        if (isDataFromCache || isLoading) return;
+
         const interval = setInterval(() => {
             setLivePrices(prevPrices => {
                 const newPrices = { ...prevPrices };
@@ -440,7 +453,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
         }, 5000);
 
         return () => clearInterval(interval);
-    }, [isLoading, availableAssets]);
+    }, [isLoading, availableAssets, isDataFromCache]);
 
     const value = useMemo(() => ({
         portfolio,
@@ -473,3 +486,5 @@ export function usePortfolio() {
     }
     return context;
 }
+
+    
