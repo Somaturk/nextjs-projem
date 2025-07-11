@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer base {
+  :root {
+    --background: 210 40% 96.1%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 0 84.2% 60.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 217.2 32.6% 17.5%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 0 84.2% 60.2%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 0 84.2% 60.2%;
+    --chart-1: 140 65% 55%; /* Green - Döviz */
+    --chart-2: 35 95% 55%;   /* Bright Orange - Kripto */
+    --chart-3: 45 90% 55%;  /* Yellow - Altın */
+    --chart-4: 220 85% 60%; /* Blue - Hisse Senedi */
+    --chart-5: 210 10% 60%; /* Light Gray - Gümüş */
+    --chart-6: 260 85% 65%; /* Purple - Mevduat */
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 240 4% 10%;
+    --foreground: 210 40% 98%;
+    --card: 240 4% 12%;
+    --card-foreground: 210 40% 98%;
+    --popover: 240 4% 10%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 0 72.2% 50.6%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 240 4% 15%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 240 4% 15%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 0 72.2% 50.6%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 240 4% 15%;
+    --input: 240 4% 15%;
+    --ring: 0 72.2% 50.6%;
+    --chart-1: 140 65% 55%; /* Green - Döviz */
+    --chart-2: 35 95% 55%;   /* Bright Orange - Kripto */
+    --chart-3: 45 90% 55%;  /* Yellow - Altın */
+    --chart-4: 220 85% 60%; /* Blue - Hisse Senedi */
+    --chart-5: 210 10% 60%; /* Light Gray - Gümüş */
+    --chart-6: 260 85% 65%; /* Purple - Mevduat */
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

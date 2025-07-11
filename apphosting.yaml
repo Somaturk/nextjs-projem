@@ -1,0 +1,20 @@
+# Settings to manage and configure a Firebase App Hosting backend.
+# https://firebase.google.com/docs/app-hosting/configure
+
+# Forcing a final refresh for the correct backend deployment. This is the definitive change.
+#runConfig:
+  # Increase this value if you'd like to automatically spin up
+  # more instances in response to increased traffic.
+ # maxInstances: 1
+
+ # apphosting.yaml
+
+run:
+  # Projeyi bu komutla derlemesini söylüyoruz
+  build: npm run build
+
+  # Derleme sonrası uygulamayı bu komutla başlatmasını söylüyoruz
+  run: npm run start
+
+runConfig:
+  maxInstances: 1
