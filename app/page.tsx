@@ -22,8 +22,6 @@ import { Undo2 } from 'lucide-react';
 import AddAssetSheet from '@/components/investable/add-asset-sheet';
 import BottomNav from '@/components/investable/bottom-nav';
 import PortfolioManagement from '@/components/investable/portfolio-management';
-import Image from 'next/image';
-import { useTheme } from 'next-themes';
 
 
 export default function Home() {
@@ -50,8 +48,6 @@ export default function Home() {
   // State for sub-chart interactions
   const [activeSubIndices, setActiveSubIndices] = useState<Record<string, number>>({});
   const [hoveredSubIndices, setHoveredSubIndices] = useState<Record<string, number | null>>({});
-
-  const { resolvedTheme } = useTheme();
 
   const handleAddAssetWithDialogClose = (newAsset: { name: string; amount: number; type: AssetType; price?: number; date?: Date }) => {
     handleAddAsset(newAsset);
@@ -232,20 +228,13 @@ export default function Home() {
   }[viewMode];
 
   if (isLoading) {
-    const logoSrc = resolvedTheme === 'light' ? '/logob1.png' : '/simge.png';
-    const pulseColorClass = resolvedTheme === 'light' ? 'bg-black/20' : 'bg-primary/20';
-
     return (
-        <div className="flex flex-col min-h-screen bg-background">
+        <div className="flex flex-col min-h-screen bg-background pb-20">
             <DynamicHeader />
-            <main className="flex-grow flex items-center justify-center flex-col">
-              <div className="relative flex items-center justify-center w-24 h-24">
-                <div className={cn("absolute inset-0 rounded-full animate-pulse-slow", pulseColorClass)}></div>
-                <Image src={logoSrc} alt="One Y.Z. Logo" width={80} height={80} className="rounded-lg shadow-md z-10" />
-              </div>
-              <p className="mt-6 text-lg font-semibold text-muted-foreground animate-pulse">
-                ONE Y.Z. Yatırım Takip yükleniyor...
-              </p>
+            <main className={cn("flex-grow mx-auto space-y-6 w-full", containerClass)}>
+                <Skeleton className="h-10 w-1/3" />
+                <Skeleton className="h-96 w-full" />
+                <Skeleton className="h-64 w-full" />
             </main>
         </div>
     )
@@ -399,7 +388,7 @@ export default function Home() {
                                     <p className={cn("text-3xl font-bold whitespace-nowrap transition-colors", 
                                         totalValueChange === 'up' ? 'text-green-500' :
                                         totalValueChange === 'down' ? 'text-red-500' :
-                                        'text-destructive'
+                                        'text-primary'
                                     )}>
                                         {totalValue.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₺
                                     </p>
@@ -411,7 +400,7 @@ export default function Home() {
                                     <p className={cn("text-3xl font-bold whitespace-nowrap transition-colors", 
                                         totalValueChange === 'up' ? 'text-green-500' :
                                         totalValueChange === 'down' ? 'text-red-500' :
-                                        'text-destructive'
+                                        'text-primary'
                                     )}>
                                         {totalValueUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $
                                     </p>
