@@ -311,113 +311,70 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
         reader.readAsText(file);
     }, [toast]);
 
+    const fetchData = useCallback(async (isInitialLoad: boolean) => {
+        if (isInitialLoad) setIsLoading(true);
+        try {
+            const allAssetsResult: Record<string, Asset[]> = {};
+            const initialPricesResult: Record<string, number> = {};
 
-    useEffect(() => {
-        async function loadData() {
-            setIsLoading(true);
-            try {
-                const allAssetsResult: Record<string, Asset[]> = {};
-                const initialPricesResult: Record<string, number> = {};
+            const currencyAssets = await getAvailableAssets('currency');
+            let usdToTryRate = 1;
 
-                // 1. Fetch currency first to get USD rate
-                const currencyAssets = await getAvailableAssets('currency');
-                let usdToTryRate = 1;
+            allAssetsResult['currency'] = currencyAssets;
+            currencyAssets.forEach(asset => {
+                const baseKey = `currency-${asset.symbol}`;
+                initialPricesResult[baseKey] = asset.currentPrice;
+                initialPricesResult[`${baseKey}-buy`] = asset.buyingPrice ?? 0;
+                initialPricesResult[`${baseKey}-sell`] = asset.sellingPrice ?? 0;
+                if (asset.symbol === 'USD') {
+                    usdToTryRate = asset.currentPrice;
+                }
+            });
 
-                allAssetsResult['currency'] = currencyAssets;
-                currencyAssets.forEach(asset => {
-                    const baseKey = `currency-${asset.symbol}`;
+            const otherAssetTypes = assetTypes.filter(t => t !== 'currency' && t !== 'cash' && t !== 'deposit');
+            const assetPromises = otherAssetTypes.map(type => getAvailableAssets(type, usdToTryRate));
+            const allOtherAssetsData = await Promise.all(assetPromises);
+
+            allOtherAssetsData.forEach((assets, index) => {
+                const type = otherAssetTypes[index];
+                allAssetsResult[type] = assets;
+                assets.forEach(asset => {
+                    const baseKey = `${type}-${asset.symbol}`;
                     initialPricesResult[baseKey] = asset.currentPrice;
-                    initialPricesResult[`${baseKey}-buy`] = asset.buyingPrice ?? 0;
-                    initialPricesResult[`${baseKey}-sell`] = asset.sellingPrice ?? 0;
-                    if (asset.symbol === 'USD') {
-                        usdToTryRate = asset.currentPrice;
-                    }
+                    if (asset.buyingPrice) initialPricesResult[`${baseKey}-buy`] = asset.buyingPrice;
+                    if (asset.sellingPrice) initialPricesResult[`${baseKey}-sell`] = asset.sellingPrice;
                 });
+            });
 
-                // Set currency data first
-                setAvailableAssets(prev => ({...prev, ...allAssetsResult}));
-                setLivePrices(prev => ({...prev, ...initialPricesResult}));
-                
-                // 2. Fetch all other assets in parallel
-                const otherAssetTypes = assetTypes.filter(t => t !== 'currency' && t !== 'cash' && t !== 'deposit');
-                
-                const assetPromises = otherAssetTypes.map(type => getAvailableAssets(type, usdToTryRate));
-                
-                const allOtherAssetsData = await Promise.all(assetPromises);
-
-                allOtherAssetsData.forEach((assets, index) => {
-                    const type = otherAssetTypes[index];
-                    allAssetsResult[type] = assets;
-                    assets.forEach(asset => {
-                        const baseKey = `${type}-${asset.symbol}`;
-                        initialPricesResult[baseKey] = asset.currentPrice;
-                        if (asset.buyingPrice) {
-                            initialPricesResult[`${baseKey}-buy`] = asset.buyingPrice;
-                        }
-                        if (asset.sellingPrice) {
-                            initialPricesResult[`${baseKey}-sell`] = asset.sellingPrice;
-                        }
-                    });
-                });
-
-                // Set all data at once after fetching everything
-                setAvailableAssets(allAssetsResult);
-                setLivePrices(initialPricesResult);
-
-            } catch (error) {
-                console.error("Failed to load initial asset data:", error);
+            setAvailableAssets(allAssetsResult);
+            setLivePrices(initialPricesResult);
+        } catch (error) {
+            console.error("Failed to load asset data:", error);
+            if (isInitialLoad) {
                 toast({
                     variant: "destructive",
                     title: "Veri Yükleme Hatası",
                     description: "Piyasa verileri yüklenirken bir sorun oluştu. Lütfen daha sonra tekrar deneyin.",
                 });
-            } finally {
-                setIsLoading(false);
             }
+        } finally {
+            if (isInitialLoad) setIsLoading(false);
         }
-        if (!Object.keys(availableAssets).length) {
-            loadData();
-        }
-    }, [toast, availableAssets]);
+    }, [toast]);
+
+    useEffect(() => {
+        fetchData(true); // Initial fetch
+
+        const intervalId = setInterval(() => {
+            fetchData(false); // Periodic fetch every 30 minutes
+        }, 30 * 60 * 1000);
+
+        return () => clearInterval(intervalId); // Cleanup on unmount
+    }, [fetchData]);
 
     useEffect(() => {
         if (isLoading) return;
         const interval = setInterval(() => {
-            setLivePrices(prevPrices => {
-                const newPrices = { ...prevPrices };
-                const updatedSymbols = new Set<string>();
-
-                Object.entries(availableAssets).forEach(([type, assets]) => {
-                    assets.forEach(asset => {
-                        const baseKey = `${type}-${asset.symbol}`;
-                        if (updatedSymbols.has(baseKey)) return;
-
-                        const fluctuation = (Math.random() - 0.5) * 0.005;
-                        const factor = 1 + fluctuation;
-
-                        if (newPrices[baseKey] !== undefined) {
-                            newPrices[baseKey] *= factor;
-                        }
-                        
-                        const sellKey = `${baseKey}-sell`;
-                        if (newPrices[sellKey] !== undefined) {
-                            newPrices[sellKey] *= factor;
-                        }
-
-                        const buyKey = `${baseKey}-buy`;
-                        if (newPrices[buyKey] !== undefined) {
-                            const spreadFactor = 1 - (Math.random() * 0.0005);
-                            newPrices[buyKey] *= factor * spreadFactor;
-                            if (newPrices[buyKey] > newPrices[sellKey]) {
-                                newPrices[buyKey] = newPrices[sellKey] * (1 - (Math.random() * 0.001));
-                            }
-                        }
-                        updatedSymbols.add(baseKey);
-                    });
-                });
-                return newPrices;
-            });
-
             setPortfolio(currentPortfolio => {
                 const now = new Date();
                 return currentPortfolio.map(asset => {
@@ -440,7 +397,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
         }, 5000);
 
         return () => clearInterval(interval);
-    }, [isLoading, availableAssets]);
+    }, [isLoading]);
 
     const value = useMemo(() => ({
         portfolio,

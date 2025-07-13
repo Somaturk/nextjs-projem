@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetClose } from "@/components/ui/sheet";
@@ -6,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { assetTypes, assetTypeTranslations, assetIcons } from '@/lib/market-data';
 import type { AssetType } from '@/lib/market-data';
 import { Landmark, FileText } from 'lucide-react';
+import { cn } from "@/lib/utils";
 
 interface AddAssetSheetProps {
     isOpen: boolean;
@@ -35,7 +35,7 @@ export default function AddAssetSheet({ isOpen, onOpenChange, onSelectAssetType,
                                     <SheetClose asChild key={type}>
                                         <Button
                                             variant="outline"
-                                            className="h-24 flex-col gap-2 text-base font-semibold"
+                                            className="h-24 flex-col gap-2 text-base font-semibold hover:bg-green-400/30 hover:border-green-400/40"
                                             onClick={() => onSelectAssetType(type)}
                                         >
                                             <AssetIcon className="h-7 w-7 mb-1" />
@@ -47,7 +47,7 @@ export default function AddAssetSheet({ isOpen, onOpenChange, onSelectAssetType,
                         <SheetClose asChild>
                             <Button
                                 variant="outline"
-                                className="h-24 flex-col gap-2 text-base font-semibold"
+                                className="h-24 flex-col gap-2 text-base font-semibold hover:bg-green-400/30 hover:border-green-400/40"
                                 onClick={onSelectDeposit}
                             >
                                 <Landmark className="h-7 w-7 mb-1" />

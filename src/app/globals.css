@@ -17,11 +17,11 @@ body {
     --primary: 0 84.2% 60.2%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96.1%;
-    --secondary-foreground: 217.2 32.6% 17.5%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 0 84.2% 60.2%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
@@ -43,19 +43,19 @@ body {
     --card-foreground: 210 40% 98%;
     --popover: 240 4% 10%;
     --popover-foreground: 210 40% 98%;
-    --primary: 0 72.2% 50.6%;
+    --primary: 0 84.2% 60.2%;
     --primary-foreground: 210 40% 98%;
     --secondary: 240 4% 15%;
     --secondary-foreground: 210 40% 98%;
     --muted: 240 4% 15%;
     --muted-foreground: 215 20% 65%;
-    --accent: 0 72.2% 50.6%;
+    --accent: 240 4% 15%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 240 4% 15%;
     --input: 240 4% 15%;
-    --ring: 0 72.2% 50.6%;
+    --ring: 0 84.2% 60.2%;
     --chart-1: 140 65% 55%; /* Green - Döviz */
     --chart-2: 35 95% 55%;   /* Bright Orange - Kripto */
     --chart-3: 45 90% 55%;  /* Yellow - Altın */

@@ -145,7 +145,7 @@ export default function AddAssetDialog({ assetType, availableAssets, onAddAsset,
                                                                             onSelect={() => {
                                                                                 form.setValue("assetSymbol", asset.symbol, { shouldValidate: true });
                                                                             }}
-                                                                            className="cursor-pointer"
+                                                                            className="cursor-pointer aria-selected:bg-green-700/20 aria-selected:text-foreground"
                                                                         >
                                                                             <Check
                                                                                 className={cn(

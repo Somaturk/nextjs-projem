@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import Image from 'next/image';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { BrainCircuit } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 interface AIOptimizerProps {
   portfolio: PortfolioAsset[];
@@ -25,6 +26,8 @@ export default function AIOptimizer({ portfolio, livePrices }: AIOptimizerProps)
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const { resolvedTheme } = useTheme();
+
   useEffect(() => {
       setMounted(true);
   }, []);
@@ -86,6 +89,8 @@ export default function AIOptimizer({ portfolio, livePrices }: AIOptimizerProps)
   
   const hasOptimizableAssets = portfolio.some(p => p.type !== 'deposit' && p.type !== 'cash' && p.purchasePrice && p.purchasePrice > 0);
 
+  const sheetLogoSrc = resolvedTheme === 'light' ? '/logob1.png' : '/simge.png';
+
   return (
       <Card className="shadow-lg">
         <CardHeader>
@@ -112,7 +117,7 @@ export default function AIOptimizer({ portfolio, livePrices }: AIOptimizerProps)
               <SheetHeader>
                 <SheetTitle className="font-headline flex items-center gap-2 text-xl">
                     {mounted ? (
-                        <Image src="/simge.png" alt="One Y.Z. Logo" width={28} height={28} />
+                        <Image src={sheetLogoSrc} alt="One Y.Z. Logo" width={28} height={28} />
                     ) : (
                         <Skeleton className="h-[28px] w-[28px]" />
                     )}
@@ -121,6 +126,9 @@ export default function AIOptimizer({ portfolio, livePrices }: AIOptimizerProps)
                 <SheetDescription>
                   One Y.Z.'den yararlanarak portföyünüzü analiz edin ve daha yüksek potansiyel getiriye sahip varlıkları keşfedin.
                 </SheetDescription>
+                <div className="text-xs italic pt-2 text-muted-foreground/80">
+                  Burada yer alan yatırım bilgi, yorum ve tavsiyeleri yatırım danışmanlığı kapsamında değildir. Yatırım danışmanlığı hizmeti, kişilerin risk ve getiri tercihleri dikkate alınarak kişiye özel sunulmaktadır. Burada yer alan ve hiçbir şekilde yönlendirici nitelikte olmayan içerik, yorum ve tavsiyeler ise genel niteliktedir. Bu tavsiyeler mali durumunuz ile risk ve getiri tercihlerinize uygun olmayabilir. Bu nedenle, sadece burada yer alan bilgilere dayanılarak yatırım kararı verilmesi beklentilerinize uygun sonuçlar doğurmayabilir.
+                </div>
               </SheetHeader>
               <div className="py-4 space-y-4">
                 <Button 
@@ -148,7 +156,7 @@ export default function AIOptimizer({ portfolio, livePrices }: AIOptimizerProps)
               </div>
               
               {result && (
-                  <ScrollArea className="h-[calc(100%-180px)] -mx-6 px-6">
+                  <ScrollArea className="h-[calc(100%-240px)] -mx-6 px-6">
                     <div className="space-y-6 pt-4 animate-in fade-in duration-500">
                         <Card>
                             <CardHeader className="pb-2">
