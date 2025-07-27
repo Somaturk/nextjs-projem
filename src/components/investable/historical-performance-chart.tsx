@@ -1,102 +1,50 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import type { PortfolioAsset } from '@/lib/market-data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import HistoricalChart from './historical-chart';
-import { subDays, subMonths, subYears, format } from 'date-fns';
+import { usePortfolio, type HistoricalRecord } from '@/context/portfolio-context';
+import { subDays, subMonths, subYears, isAfter } from 'date-fns';
 
-interface HistoricalPerformanceChartProps {
-  portfolio: PortfolioAsset[];
-  livePrices: Record<string, number>;
-}
 
-const generateHistoricalData = (
-    totalValue: number,
-    timeRange: 'daily' | 'weekly' | 'monthly' | 'all',
-    portfolio: PortfolioAsset[]
-) => {
-    const data: { date: string; total: number }[] = [];
-    const now = new Date();
-    let startDate = new Date();
-    let points = 0;
+export default function HistoricalPerformanceChart() {
+    const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly' | 'all'>('all');
+    const { historicalData: rawHistoricalData } = usePortfolio();
+    
+    const filteredHistoricalData = useMemo(() => {
+        if (!rawHistoricalData || rawHistoricalData.length === 0) {
+            return [];
+        }
 
-    if (timeRange === 'all') {
-        const firstDate = portfolio.reduce((earliest, asset) => {
-            if (asset.purchaseDate && new Date(asset.purchaseDate) < earliest) {
-                return new Date(asset.purchaseDate);
-            }
-            return earliest;
-        }, new Date());
-        startDate = firstDate < now ? firstDate : subYears(now, 1);
-        const daysDifference = Math.floor((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        points = Math.min(daysDifference, 365);
-    } else {
+        if (timeRange === 'all') {
+            return rawHistoricalData.map(d => ({ date: d.date, total: d.value }));
+        }
+
+        const now = new Date();
+        let startDate: Date;
+
         switch (timeRange) {
             case 'daily':
                 startDate = subDays(now, 1);
-                points = 24; 
                 break;
             case 'weekly':
                 startDate = subDays(now, 7);
-                points = 7;
                 break;
             case 'monthly':
                 startDate = subMonths(now, 1);
-                points = 30;
                 break;
+            default:
+                startDate = subYears(now, 100); 
         }
-    }
-    
-    if (points <= 1) {
-        return [{date: format(now, 'yyyy-MM-dd HH:mm:ss'), total: totalValue}];
-    }
 
-    let currentValue = totalValue;
-    const timeStep = (now.getTime() - startDate.getTime()) / points;
+        return rawHistoricalData
+            .filter(d => isAfter(new Date(d.date), startDate))
+            .map(d => ({ date: d.date, total: d.value }));
 
-    for (let i = 0; i <= points; i++) {
-        const date = new Date(now.getTime() - (i * timeStep));
-        data.push({ 
-            date: format(date, 'yyyy-MM-dd HH:mm:ss'), 
-            total: currentValue 
-        });
-        
-        const fluctuation = (Math.random() - 0.45) * (0.05 / Math.sqrt(points));
-        currentValue /= (1 + fluctuation);
-    }
-    
-    return data.reverse();
-};
+    }, [timeRange, rawHistoricalData]);
 
-export default function HistoricalPerformanceChart({ portfolio, livePrices }: HistoricalPerformanceChartProps) {
-    const [timeRange, setTimeRange] = useState<'daily' | 'weekly' | 'monthly' | 'all'>('all');
-    const [historicalData, setHistoricalData] = useState<{ date: string; total: number }[]>([]);
-
-    const totalValue = useMemo(() => {
-        return portfolio.reduce((acc, asset) => {
-            if (asset.type === 'deposit') {
-                 if (asset.depositType === 'fx' && asset.currency) {
-                    const price = livePrices[`currency-${asset.currency}`] || 0;
-                    return acc + asset.amount * price;
-                }
-                return acc + asset.amount;
-            }
-            const price = livePrices[`${asset.type}-${asset.name}`] || 0;
-            return acc + price * asset.amount;
-        }, 0);
-    }, [portfolio, livePrices]);
-
-    useEffect(() => {
-        if (totalValue === 0 || portfolio.length === 0) {
-            setHistoricalData([]);
-            return;
-        };
-        const data = generateHistoricalData(totalValue, timeRange, portfolio);
-        setHistoricalData(data);
-    }, [totalValue, timeRange, portfolio]);
-    
     const timeRangeTitles = {
         daily: "Günlük Performans",
         weekly: "Haftalık Performans",
@@ -118,11 +66,11 @@ export default function HistoricalPerformanceChart({ portfolio, livePrices }: Hi
                 <CardDescription>{timeRangeDescriptions[timeRange]}</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-                 {historicalData.length > 1 ? (
-                    <HistoricalChart data={historicalData} />
+                 {filteredHistoricalData.length > 1 ? (
+                    <HistoricalChart data={filteredHistoricalData} />
                 ) : (
                     <div className="flex h-[250px] sm:h-[280px] w-full items-center justify-center rounded-lg text-center text-muted-foreground">
-                        <p>Geçmiş performans grafiği için yeterli veri yok.</p>
+                        <p className="leading-relaxed">Geçmiş performans grafiği için yeterli veri yok. <br/> Portföyünüz değiştikçe veriler burada birikecektir.</p>
                     </div>
                 )}
                 <div className="flex justify-center p-4 pt-2">

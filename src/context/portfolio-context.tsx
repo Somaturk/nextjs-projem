@@ -25,6 +25,9 @@ export interface UpdateDepositInput {
 
 export type ViewMode = 'mobile' | 'tablet' | 'desktop';
 
+export type HistoricalRecord = { date: string; value: number };
+
+
 const samplePortfolio: PortfolioAsset[] = [
   { id: 'gold-Gram Altın-1722350212000', type: 'gold', name: 'Gram Altın', amount: 10, purchasePrice: 2400, purchaseDate: new Date('2024-04-01') },
   { id: 'currency-USD-1722350213000', type: 'currency', name: 'USD', amount: 500, purchasePrice: 32.50, purchaseDate: new Date('2024-05-10') },
@@ -52,6 +55,7 @@ interface PortfolioContextType {
     handleImportPortfolio: (file: File) => void;
     handleLoadSampleData: () => void;
     handleClearPortfolio: () => void;
+    historicalData: HistoricalRecord[];
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
@@ -64,12 +68,12 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
     const [watchlist, setWatchlist] = useState<string[]>([]);
     const [viewMode, setViewMode] = useState<ViewMode>('mobile');
+    const [historicalData, setHistoricalData] = useState<HistoricalRecord[]>([]);
 
     useEffect(() => {
         try {
             const storedPortfolio = localStorage.getItem('portfolio-data');
             if (storedPortfolio) {
-                // Dates need to be revived from strings
                 const parsedPortfolio = JSON.parse(storedPortfolio).map((asset: any) => ({
                     ...asset,
                     purchaseDate: asset.purchaseDate ? new Date(asset.purchaseDate) : undefined,
@@ -81,21 +85,66 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
             if (storedWatchlist) {
                 setWatchlist(JSON.parse(storedWatchlist));
             }
+
+            const storedHistory = localStorage.getItem('portfolio-history');
+            if (storedHistory) {
+                setHistoricalData(JSON.parse(storedHistory));
+            }
         } catch (error) {
             console.error("Failed to load data from localStorage", error);
             setPortfolio([]);
             setWatchlist([]);
+            setHistoricalData([]);
         }
     }, []);
+
+    const totalValue = useMemo(() => {
+        if (isLoading || Object.keys(livePrices).length === 0) return 0;
+        return portfolio.reduce((acc, asset) => {
+            if (asset.type === 'deposit') {
+                if (asset.depositType === 'fx' && asset.currency) {
+                    const price = livePrices[`currency-${asset.currency}`] || 0;
+                    return acc + asset.amount * price;
+                }
+                return acc + asset.amount;
+            }
+            const price = livePrices[`${asset.type}-${asset.name}`] || 0;
+            return acc + price * asset.amount;
+        }, 0);
+    }, [portfolio, livePrices, isLoading]);
+
 
     useEffect(() => {
         try {
             localStorage.setItem('portfolio-data', JSON.stringify(portfolio));
             localStorage.setItem('portfolio-watchlist', JSON.stringify(watchlist));
+            localStorage.setItem('portfolio-history', JSON.stringify(historicalData));
         } catch (error) {
             console.error("Failed to save data to localStorage", error);
         }
-    }, [portfolio, watchlist]);
+    }, [portfolio, watchlist, historicalData]);
+    
+    useEffect(() => {
+        if (isLoading || totalValue === 0) return;
+
+        setHistoricalData(prevData => {
+            const now = new Date();
+            const lastRecord = prevData[prevData.length - 1];
+            
+            // Record data every hour or if it's the first data point
+            const shouldRecord = !lastRecord || (now.getTime() - new Date(lastRecord.date).getTime() > 60 * 60 * 1000);
+
+            if (shouldRecord) {
+                const newRecord: HistoricalRecord = { date: now.toISOString(), value: totalValue };
+                // Keep history to a reasonable size, e.g., last 365 records
+                const updatedHistory = [...prevData, newRecord].slice(-365);
+                return updatedHistory;
+            }
+            return prevData;
+        });
+
+    }, [totalValue, isLoading]);
+
 
     const handleToggleWatchlist = useCallback((assetKey: string) => {
         setWatchlist(prev => {
@@ -230,6 +279,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 
     const handleClearPortfolio = useCallback(() => {
         setPortfolio([]);
+        setHistoricalData([]);
         toast({
             title: "Veriler Silindi",
             description: "Tüm portföy verileriniz başarıyla silindi.",
@@ -238,6 +288,14 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 
     const handleLoadSampleData = useCallback(() => {
         setPortfolio(samplePortfolio);
+        const now = new Date();
+        const sampleHistory = [
+            { date: new Date(now.setDate(now.getDate() - 30)).toISOString(), value: 250000 },
+            { date: new Date(now.setDate(now.getDate() + 5)).toISOString(), value: 255000 },
+            { date: new Date(now.setDate(now.getDate() + 10)).toISOString(), value: 265000 },
+            { date: new Date(now.setDate(now.getDate() + 15)).toISOString(), value: 260000 },
+        ];
+        setHistoricalData(sampleHistory);
         toast({ title: "Örnek Veri Yüklendi", description: "Test amaçlı portföy verileri yüklendi." });
     }, [toast]);
 
@@ -251,7 +309,13 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
             return;
         }
 
-        const dataStr = JSON.stringify(portfolio, null, 2);
+        const exportData = {
+            portfolio: portfolio,
+            watchlist: watchlist,
+            history: historicalData
+        };
+
+        const dataStr = JSON.stringify(exportData, null, 2);
         const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
 
         const exportFileDefaultName = `portfolio-backup-${new Date().toISOString().slice(0, 10)}.json`;
@@ -265,7 +329,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
             title: 'Dışa Aktarma Başarılı',
             description: 'Portföyünüz JSON dosyası olarak indirildi.',
         });
-    }, [portfolio, toast]);
+    }, [portfolio, watchlist, historicalData, toast]);
 
     const handleImportPortfolio = useCallback((file: File) => {
         const reader = new FileReader();
@@ -277,16 +341,34 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
                 }
                 const importedData = JSON.parse(text);
                 
-                if (!Array.isArray(importedData)) {
-                    throw new Error('Geçersiz dosya formatı. Bir dizi bekleniyordu.');
+                if (typeof importedData !== 'object' || importedData === null) {
+                    throw new Error('Geçersiz dosya formatı. Bir JSON nesnesi bekleniyordu.');
+                }
+
+                if (Array.isArray(importedData)) { // Handle old format
+                    const revivedPortfolio = importedData.map((asset: any) => ({
+                        ...asset,
+                        purchaseDate: asset.purchaseDate ? new Date(asset.purchaseDate) : undefined,
+                    }));
+                     setPortfolio(revivedPortfolio);
+                     setWatchlist([]);
+                     setHistoricalData([]);
+                } else { // Handle new format
+                    if (importedData.portfolio && Array.isArray(importedData.portfolio)) {
+                        const revivedPortfolio = importedData.portfolio.map((asset: any) => ({
+                            ...asset,
+                            purchaseDate: asset.purchaseDate ? new Date(asset.purchaseDate) : undefined,
+                        }));
+                        setPortfolio(revivedPortfolio);
+                    }
+                    if (importedData.watchlist && Array.isArray(importedData.watchlist)) {
+                        setWatchlist(importedData.watchlist);
+                    }
+                    if (importedData.history && Array.isArray(importedData.history)) {
+                        setHistoricalData(importedData.history);
+                    }
                 }
                 
-                const revivedPortfolio = importedData.map((asset: any) => ({
-                    ...asset,
-                    purchaseDate: asset.purchaseDate ? new Date(asset.purchaseDate) : undefined,
-                }));
-                
-                setPortfolio(revivedPortfolio);
                 toast({
                     title: 'İçe Aktarma Başarılı',
                     description: 'Portföy verileriniz başarıyla yüklendi.',
@@ -418,7 +500,8 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
         handleImportPortfolio,
         handleLoadSampleData,
         handleClearPortfolio,
-    }), [portfolio, livePrices, availableAssets, isLoading, handleAddAsset, handleAddDeposit, handleUpdateAsset, handleUpdateDeposit, handleDeleteAsset, watchlist, handleToggleWatchlist, viewMode, handleExportPortfolio, handleImportPortfolio, handleLoadSampleData, handleClearPortfolio]);
+        historicalData,
+    }), [portfolio, livePrices, availableAssets, isLoading, handleAddAsset, handleAddDeposit, handleUpdateAsset, handleUpdateDeposit, handleDeleteAsset, watchlist, handleToggleWatchlist, viewMode, handleExportPortfolio, handleImportPortfolio, handleLoadSampleData, handleClearPortfolio, historicalData]);
 
     return <PortfolioContext.Provider value={value}>{children}</PortfolioContext.Provider>;
 }
