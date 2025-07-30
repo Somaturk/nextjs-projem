@@ -170,7 +170,7 @@ export default function Home() {
   
   const subChartGroups = useMemo(() => {
     return portfolioChartData
-        .filter(group => (groupedPortfolio[group.type]?.assets || []).length > 1);
+        .filter(group => (groupedPortfolio[group.type]?.assets || []).some(a => a.value > 0));
   }, [portfolioChartData, groupedPortfolio]);
   
     const historicalChartGroups = useMemo(() => {
@@ -178,7 +178,7 @@ export default function Home() {
         return Object.keys(historicalData)
             .filter(key => 
                 key !== 'total' && 
-                assetTypeTranslations[key as AssetType] && // Ensure the key is a valid, translatable asset type
+                assetTypeTranslations[key as AssetType] &&
                 (historicalData[key as AssetType] || []).some(d => d.value > 0)
             )
             .map(type => type as AssetType);
@@ -392,7 +392,7 @@ export default function Home() {
                 ))}
                 
                 <CarouselItem data-chart-type="historical">
-                   <HistoricalPerformanceChart data={historicalData.total} groupType="total" />
+                   <HistoricalPerformanceChart data={historicalData.total || []} groupType="total" />
                 </CarouselItem>
 
               </CarouselContent>
@@ -488,3 +488,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
