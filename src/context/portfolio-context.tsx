@@ -26,13 +26,30 @@ export interface UpdateDepositInput {
 export type ViewMode = 'mobile' | 'tablet' | 'desktop';
 
 export type HistoricalRecord = { date: string; value: number };
+<<<<<<< HEAD
+=======
+export type GroupHistoricalData = {
+    total: HistoricalRecord[];
+} & {
+    [key in AssetType]?: HistoricalRecord[];
+};
+>>>>>>> 9506d82 (Çakışmaları çözdüm)
 
 
 const samplePortfolio: PortfolioAsset[] = [
+  // Gold
   { id: 'gold-Gram Altın-1722350212000', type: 'gold', name: 'Gram Altın', amount: 10, purchasePrice: 2400, purchaseDate: new Date('2024-04-01') },
+  { id: 'gold-Çeyrek Altın-1722350212001', type: 'gold', name: 'Çeyrek Altın', amount: 5, purchasePrice: 4000, purchaseDate: new Date('2024-05-15') },
+  // Currency
   { id: 'currency-USD-1722350213000', type: 'currency', name: 'USD', amount: 500, purchasePrice: 32.50, purchaseDate: new Date('2024-05-10') },
-  { id: 'crypto-BTC-1722350214000', type: 'crypto', name: 'Bitcoin', amount: 0.05, purchasePrice: 2210000, purchaseDate: new Date('2024-06-01') },
+  { id: 'currency-EUR-1722350213001', type: 'currency', name: 'EUR', amount: 300, purchasePrice: 35.20, purchaseDate: new Date('2024-06-20') },
+  // Crypto
+  { id: 'crypto-BTC-1722350214000', type: 'crypto', name: 'BTC', amount: 0.05, purchasePrice: 2210000, purchaseDate: new Date('2024-06-01') },
+  { id: 'crypto-ETH-1722350214001', type: 'crypto', name: 'ETH', amount: 1, purchasePrice: 110000, purchaseDate: new Date('2024-07-01') },
+  // Stock
   { id: 'stock-THYAO-1722350215000', type: 'stock', name: 'THYAO', amount: 100, purchasePrice: 280, purchaseDate: new Date('2024-03-15') },
+  { id: 'stock-TUPRS-1722350215001', type: 'stock', name: 'TUPRS', amount: 50, purchasePrice: 170, purchaseDate: new Date('2024-04-25') },
+  // Deposit
   { id: 'deposit-Garanti BBVA-1722350216000', type: 'deposit', name: 'Garanti BBVA', amount: 15000, purchasePrice: 15000, purchaseDate: new Date(), depositType: 'demand' },
 ];
 
@@ -55,10 +72,23 @@ interface PortfolioContextType {
     handleImportPortfolio: (file: File) => void;
     handleLoadSampleData: () => void;
     handleClearPortfolio: () => void;
+<<<<<<< HEAD
     historicalData: HistoricalRecord[];
+=======
+    historicalData: GroupHistoricalData;
+>>>>>>> 9506d82 (Çakışmaları çözdüm)
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
+
+const initialHistoricalData: GroupHistoricalData = assetTypes.reduce(
+    (acc, type) => {
+        acc[type] = [];
+        return acc;
+    },
+    { total: [] } as GroupHistoricalData
+);
+
 
 export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     const { toast } = useToast();
@@ -68,7 +98,11 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
     const [watchlist, setWatchlist] = useState<string[]>([]);
     const [viewMode, setViewMode] = useState<ViewMode>('mobile');
+<<<<<<< HEAD
     const [historicalData, setHistoricalData] = useState<HistoricalRecord[]>([]);
+=======
+    const [historicalData, setHistoricalData] = useState<GroupHistoricalData>(initialHistoricalData);
+>>>>>>> 9506d82 (Çakışmaları çözdüm)
 
     useEffect(() => {
         try {
@@ -94,6 +128,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
             console.error("Failed to load data from localStorage", error);
             setPortfolio([]);
             setWatchlist([]);
+<<<<<<< HEAD
             setHistoricalData([]);
         }
     }, []);
@@ -111,6 +146,37 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
             const price = livePrices[`${asset.type}-${asset.name}`] || 0;
             return acc + price * asset.amount;
         }, 0);
+=======
+            setHistoricalData(initialHistoricalData);
+        }
+    }, []);
+
+    const groupedPortfolio = useMemo(() => {
+        if (isLoading) return {};
+        const groups: Record<string, { value: number; assets: any[] }> = {};
+        portfolio.forEach(asset => {
+            if (!groups[asset.type]) {
+                groups[asset.type] = { value: 0, assets: [] };
+            }
+            let price = 1;
+            let value = 0;
+
+            if (asset.type === 'deposit') {
+                if (asset.depositType === 'fx' && asset.currency) {
+                    price = livePrices[`currency-${asset.currency}`] || 0;
+                    value = asset.amount * price;
+                } else {
+                    value = asset.amount;
+                }
+            } else {
+                price = livePrices[`${asset.type}-${asset.name}`] || 0;
+                value = price * asset.amount;
+            }
+            groups[asset.type].value += value;
+            groups[asset.type].assets.push({ ...asset, price, value });
+        });
+        return groups;
+>>>>>>> 9506d82 (Çakışmaları çözdüm)
     }, [portfolio, livePrices, isLoading]);
 
 
@@ -125,6 +191,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     }, [portfolio, watchlist, historicalData]);
     
     useEffect(() => {
+<<<<<<< HEAD
         if (isLoading || totalValue === 0) return;
 
         setHistoricalData(prevData => {
@@ -144,6 +211,36 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
         });
 
     }, [totalValue, isLoading]);
+=======
+        if (isLoading || Object.keys(groupedPortfolio).length === 0) return;
+
+        setHistoricalData(prevData => {
+            const now = new Date();
+            const lastRecord = prevData.total[prevData.total.length - 1];
+            
+            const shouldRecord = !lastRecord || (now.getTime() - new Date(lastRecord.date).getTime() > 60 * 60 * 1000);
+
+            if (shouldRecord) {
+                const newDate = now.toISOString();
+                const updatedData = { ...prevData };
+
+                const totalValue = Object.values(groupedPortfolio).reduce((sum, group) => sum + group.value, 0);
+                updatedData.total = [...(updatedData.total || []), { date: newDate, value: totalValue }].slice(-365);
+                
+                for (const type of assetTypes) {
+                    const groupValue = groupedPortfolio[type]?.value || 0;
+                    const groupHistory = updatedData[type] || [];
+                    updatedData[type] = [...groupHistory, { date: newDate, value: groupValue }].slice(-365);
+                }
+                
+                return updatedData;
+            }
+
+            return prevData;
+        });
+
+    }, [groupedPortfolio, isLoading]);
+>>>>>>> 9506d82 (Çakışmaları çözdüm)
 
 
     const handleToggleWatchlist = useCallback((assetKey: string) => {
@@ -279,7 +376,11 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 
     const handleClearPortfolio = useCallback(() => {
         setPortfolio([]);
+<<<<<<< HEAD
         setHistoricalData([]);
+=======
+        setHistoricalData(initialHistoricalData);
+>>>>>>> 9506d82 (Çakışmaları çözdüm)
         toast({
             title: "Veriler Silindi",
             description: "Tüm portföy verileriniz başarıyla silindi.",
@@ -289,12 +390,49 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     const handleLoadSampleData = useCallback(() => {
         setPortfolio(samplePortfolio);
         const now = new Date();
+<<<<<<< HEAD
         const sampleHistory = [
             { date: new Date(now.setDate(now.getDate() - 30)).toISOString(), value: 250000 },
             { date: new Date(now.setDate(now.getDate() + 5)).toISOString(), value: 255000 },
             { date: new Date(now.setDate(now.getDate() + 10)).toISOString(), value: 265000 },
             { date: new Date(now.setDate(now.getDate() + 15)).toISOString(), value: 260000 },
         ];
+=======
+        const sampleHistory: GroupHistoricalData = {
+          total: [
+            { date: new Date(new Date().setDate(now.getDate() - 30)).toISOString(), value: 410000 },
+            { date: new Date(new Date().setDate(now.getDate() - 15)).toISOString(), value: 425000 },
+            { date: new Date(new Date().setDate(now.getDate() - 1)).toISOString(), value: 450000 },
+          ],
+          gold: [
+              { date: new Date(new Date().setDate(now.getDate() - 30)).toISOString(), value: 44000 },
+              { date: new Date(new Date().setDate(now.getDate() - 15)).toISOString(), value: 45000 },
+              { date: new Date(new Date().setDate(now.getDate() - 1)).toISOString(), value: 46000 },
+          ],
+          currency: [
+              { date: new Date(new Date().setDate(now.getDate() - 30)).toISOString(), value: 26810 },
+              { date: new Date(new Date().setDate(now.getDate() - 15)).toISOString(), value: 27500 },
+              { date: new Date(new Date().setDate(now.getDate() - 1)).toISOString(), value: 28000 },
+          ],
+          crypto: [
+              { date: new Date(new Date().setDate(now.getDate() - 30)).toISOString(), value: 220500 },
+              { date: new Date(new Date().setDate(now.getDate() - 15)).toISOString(), value: 230000 },
+              { date: new Date(new Date().setDate(now.getDate() - 1)).toISOString(), value: 245000 },
+          ],
+          stock: [
+              { date: new Date(new Date().setDate(now.getDate() - 30)).toISOString(), value: 36500 },
+              { date: new Date(new Date().setDate(now.getDate() - 15)).toISOString(), value: 38000 },
+              { date: new Date(new Date().setDate(now.getDate() - 1)).toISOString(), value: 40000 },
+          ],
+          deposit: [
+              { date: new Date(new Date().setDate(now.getDate() - 30)).toISOString(), value: 15000 },
+              { date: new Date(new Date().setDate(now.getDate() - 15)).toISOString(), value: 15000 },
+              { date: new Date(new Date().setDate(now.getDate() - 1)).toISOString(), value: 15000 },
+          ],
+          silver: [],
+          cash: [],
+        };
+>>>>>>> 9506d82 (Çakışmaları çözdüm)
         setHistoricalData(sampleHistory);
         toast({ title: "Örnek Veri Yüklendi", description: "Test amaçlı portföy verileri yüklendi." });
     }, [toast]);
@@ -352,7 +490,11 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
                     }));
                      setPortfolio(revivedPortfolio);
                      setWatchlist([]);
+<<<<<<< HEAD
                      setHistoricalData([]);
+=======
+                     setHistoricalData(initialHistoricalData);
+>>>>>>> 9506d82 (Çakışmaları çözdüm)
                 } else { // Handle new format
                     if (importedData.portfolio && Array.isArray(importedData.portfolio)) {
                         const revivedPortfolio = importedData.portfolio.map((asset: any) => ({
@@ -364,8 +506,16 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
                     if (importedData.watchlist && Array.isArray(importedData.watchlist)) {
                         setWatchlist(importedData.watchlist);
                     }
+<<<<<<< HEAD
                     if (importedData.history && Array.isArray(importedData.history)) {
                         setHistoricalData(importedData.history);
+=======
+                    if (importedData.history) {
+                        const revivedHistory = { ...initialHistoricalData, ...importedData.history };
+                        setHistoricalData(revivedHistory);
+                    } else {
+                        setHistoricalData(initialHistoricalData);
+>>>>>>> 9506d82 (Çakışmaları çözdüm)
                     }
                 }
                 

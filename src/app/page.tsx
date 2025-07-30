@@ -18,7 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import AIOptimizer from '@/components/investable/ai-optimizer';
 import HistoricalPerformanceChart from '@/components/investable/historical-performance-chart';
 import { Button } from '@/components/ui/button';
-import { Undo2 } from 'lucide-react';
+import { Undo2, LineChart } from 'lucide-react';
 import AddAssetSheet from '@/components/investable/add-asset-sheet';
 import BottomNav from '@/components/investable/bottom-nav';
 import PortfolioManagement from '@/components/investable/portfolio-management';
@@ -34,7 +34,8 @@ export default function Home() {
     isLoading, 
     handleAddAsset,
     handleAddDeposit,
-    viewMode
+    viewMode,
+    historicalData,
   } = usePortfolio();
 
   const [api, setApi] = useState<CarouselApi>()
@@ -71,35 +72,6 @@ export default function Home() {
     setIsAddDepositOpen(true);
   };
 
-  const totalValue = useMemo(() => {
-    return portfolio.reduce((acc, asset) => {
-      if (asset.type === 'deposit') {
-          if (asset.depositType === 'fx' && asset.currency) {
-              const price = livePrices[`currency-${asset.currency}`] || 0;
-              return acc + asset.amount * price;
-          }
-          return acc + asset.amount;
-      }
-      const price = livePrices[`${asset.type}-${asset.name}`] || 0;
-      return acc + price * asset.amount;
-    }, 0);
-  }, [portfolio, livePrices]);
-
-  const usdPrice = livePrices['currency-USD'] || 1;
-  const totalValueUSD = totalValue / usdPrice;
-
-  const prevTotalValue = useRef<number>();
-  const [totalValueChange, setTotalValueChange] = useState<'up' | 'down' | 'same'>('same');
-
-  useEffect(() => {
-    if (prevTotalValue.current !== undefined) {
-      if (totalValue > prevTotalValue.current) setTotalValueChange('up');
-      else if (totalValue < prevTotalValue.current) setTotalValueChange('down');
-      else setTotalValueChange('same');
-    }
-    prevTotalValue.current = totalValue;
-  }, [totalValue]);
-
   const groupedPortfolio = useMemo(() => {
     const groups: Record<string, { value: number; assets: any[] }> = {};
 
@@ -128,6 +100,26 @@ export default function Home() {
     });
     return groups;
   }, [portfolio, livePrices]);
+
+  const totalValue = useMemo(() => {
+      return Object.values(groupedPortfolio).reduce((acc, group) => acc + group.value, 0);
+  }, [groupedPortfolio]);
+
+
+  const usdPrice = livePrices['currency-USD'] || 1;
+  const totalValueUSD = totalValue / usdPrice;
+
+  const prevTotalValue = useRef<number>();
+  const [totalValueChange, setTotalValueChange] = useState<'up' | 'down' | 'same'>('same');
+
+  useEffect(() => {
+    if (prevTotalValue.current !== undefined) {
+      if (totalValue > prevTotalValue.current) setTotalValueChange('up');
+      else if (totalValue < prevTotalValue.current) setTotalValueChange('down');
+      else setTotalValueChange('same');
+    }
+    prevTotalValue.current = totalValue;
+  }, [totalValue]);
 
   const prevAssetTypeTotals = useRef<Record<string, number>>({});
   
@@ -180,6 +172,18 @@ export default function Home() {
     return portfolioChartData
         .filter(group => (groupedPortfolio[group.type]?.assets || []).length > 1);
   }, [portfolioChartData, groupedPortfolio]);
+  
+    const historicalChartGroups = useMemo(() => {
+        if (!historicalData) return [];
+        return Object.keys(historicalData)
+            .filter(key => 
+                key !== 'total' && 
+                assetTypeTranslations[key as AssetType] && // Ensure the key is a valid, translatable asset type
+                (historicalData[key as AssetType] || []).some(d => d.value > 0)
+            )
+            .map(type => type as AssetType);
+    }, [historicalData]);
+
 
   const displayIndex = hoveredSliceIndex !== null ? hoveredSliceIndex : selectedSliceIndex;
 
@@ -287,17 +291,19 @@ export default function Home() {
                 opts={{ loop: false }}
                 onDrag={(emblaApi) => {
                     const index = emblaApi.selectedScrollSnap();
-                    const chart = emblaApi.slideNodes()[index];
-                    const type = chart?.querySelector('[data-type]')?.getAttribute('data-type');
+                    const slideNode = emblaApi.slideNodes()[index];
                     
-                    if (!type || type === 'historical') {
-                        return;
-                    }
+                    if (!slideNode) return;
 
-                    if (type === 'main') {
+                    const chartType = slideNode.getAttribute('data-chart-type');
+                    if (!chartType) return;
+                    
+                    if (chartType === 'main') {
                         // This logic can be expanded if needed
-                    } else if (type) {
-                        const mainChartIndex = portfolioChartData.findIndex(asset => asset.type === type);
+                    } else if (chartType === 'historical' || chartType === 'group-performance') {
+                        return; // Do nothing for these types for now
+                    } else { // This handles asset group sub-charts
+                        const mainChartIndex = portfolioChartData.findIndex(asset => asset.type === chartType);
                          if (mainChartIndex !== -1) {
                             setSelectedSliceIndex(mainChartIndex);
                         }
@@ -305,7 +311,7 @@ export default function Home() {
                 }}
              >
               <CarouselContent>
-                <CarouselItem>
+                <CarouselItem data-chart-type="main">
                   <Card className="border-none shadow-none bg-transparent" data-type="main">
                       <CardTitle className="text-lg text-center pt-2">Varlıklarınız</CardTitle>
                       <CardContent className="p-0">
@@ -338,7 +344,7 @@ export default function Home() {
                   const subDisplayIndex = subHoveredIndex !== null ? subHoveredIndex : subActiveIndex;
 
                   return (
-                    <CarouselItem key={group.type} data-type={group.type}>
+                    <CarouselItem key={group.type} data-chart-type={group.type}>
                         <Card className="border-none shadow-none bg-transparent relative">
                              <div className="text-center pt-2">
                                 <button
@@ -375,9 +381,18 @@ export default function Home() {
                     </CarouselItem>
                   )
                 })}
+
+                {historicalChartGroups.map(groupType => (
+                    <CarouselItem key={`history-${groupType}`} data-chart-type="historical">
+                        <HistoricalPerformanceChart 
+                            data={historicalData[groupType] || []}
+                            groupType={groupType} 
+                        />
+                    </CarouselItem>
+                ))}
                 
-                <CarouselItem>
-                   <HistoricalPerformanceChart portfolio={portfolio} livePrices={livePrices} />
+                <CarouselItem data-chart-type="historical">
+                   <HistoricalPerformanceChart data={historicalData.total} groupType="total" />
                 </CarouselItem>
 
               </CarouselContent>

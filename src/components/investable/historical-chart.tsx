@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -10,6 +11,43 @@ import {
 interface HistoricalChartProps {
   data: { date: string; total: number }[];
 }
+
+const CustomDot = (props: any) => {
+    const { cx, cy, stroke, payload, value, index, data } = props;
+    const isLastPoint = index === data.length - 1;
+
+    if (isLastPoint) {
+        return (
+            <g>
+                <circle cx={cx} cy={cy} r={5} stroke={stroke} strokeWidth={2} fill="hsl(var(--background))" />
+                <circle cx={cx} cy={cy} r={5} stroke={stroke} strokeWidth={2} fill={stroke}>
+                    <animate
+                        attributeName="r"
+                        from="5"
+                        to="10"
+                        dur="1.5s"
+                        begin="0s"
+                        repeatCount="indefinite"
+                        keyTimes="0; 0.2; 0.5; 1"
+                        values="5; 10; 5; 5"
+                    />
+                    <animate
+                        attributeName="opacity"
+                        from="1"
+                        to="0"
+                        dur="1.5s"
+                        begin="0s"
+                        repeatCount="indefinite"
+                        keyTimes="0; 0.2; 0.5; 1"
+                        values="1; 0.5; 0; 0"
+                    />
+                </circle>
+            </g>
+        );
+    }
+    return null;
+};
+
 
 export default function HistoricalChart({ data }: HistoricalChartProps) {
   const chartConfig = {
@@ -26,7 +64,11 @@ export default function HistoricalChart({ data }: HistoricalChartProps) {
     const values = data.map(d => d.total);
     const min = Math.min(...values);
     const max = Math.max(...values);
+<<<<<<< HEAD
     const padding = (max - min) * 0.1; // %10 padding
+=======
+    const padding = (max - min) * 0.1;
+>>>>>>> 9506d82 (Çakışmaları çözdüm)
     return [Math.max(0, min - padding), max + padding];
   }
 
@@ -36,7 +78,7 @@ export default function HistoricalChart({ data }: HistoricalChartProps) {
         accessibilityLayer
         data={data}
         margin={{
-          left: -20,
+          left: 12,
           right: 10,
           top: 10,
         }}
@@ -103,12 +145,16 @@ export default function HistoricalChart({ data }: HistoricalChartProps) {
           fill="url(#fillTotal)"
           stroke="var(--color-total)"
           strokeWidth={2}
-          dot={{
-            r: 5,
-            strokeWidth: 2,
-            fill: "var(--color-total)",
-            stroke: "hsl(var(--background))",
-          }}
+          dot={(props) => (
+              <CustomDot
+                key={props.key}
+                cx={props.cx}
+                cy={props.cy}
+                stroke={props.stroke}
+                index={props.index}
+                data={data}
+              />
+            )}
           activeDot={{
             r: 7,
             strokeWidth: 2,
