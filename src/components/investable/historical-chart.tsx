@@ -64,11 +64,7 @@ export default function HistoricalChart({ data }: HistoricalChartProps) {
     const values = data.map(d => d.total);
     const min = Math.min(...values);
     const max = Math.max(...values);
-<<<<<<< HEAD
-    const padding = (max - min) * 0.1; // %10 padding
-=======
     const padding = (max - min) * 0.1;
->>>>>>> 9506d82 (Çakışmaları çözdüm)
     return [Math.max(0, min - padding), max + padding];
   }
 

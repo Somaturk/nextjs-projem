@@ -26,14 +26,11 @@ export interface UpdateDepositInput {
 export type ViewMode = 'mobile' | 'tablet' | 'desktop';
 
 export type HistoricalRecord = { date: string; value: number };
-<<<<<<< HEAD
-=======
 export type GroupHistoricalData = {
     total: HistoricalRecord[];
 } & {
     [key in AssetType]?: HistoricalRecord[];
 };
->>>>>>> 9506d82 (Çakışmaları çözdüm)
 
 
 const samplePortfolio: PortfolioAsset[] = [
@@ -72,11 +69,7 @@ interface PortfolioContextType {
     handleImportPortfolio: (file: File) => void;
     handleLoadSampleData: () => void;
     handleClearPortfolio: () => void;
-<<<<<<< HEAD
-    historicalData: HistoricalRecord[];
-=======
     historicalData: GroupHistoricalData;
->>>>>>> 9506d82 (Çakışmaları çözdüm)
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
@@ -98,11 +91,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
     const [watchlist, setWatchlist] = useState<string[]>([]);
     const [viewMode, setViewMode] = useState<ViewMode>('mobile');
-<<<<<<< HEAD
-    const [historicalData, setHistoricalData] = useState<HistoricalRecord[]>([]);
-=======
     const [historicalData, setHistoricalData] = useState<GroupHistoricalData>(initialHistoricalData);
->>>>>>> 9506d82 (Çakışmaları çözdüm)
 
     useEffect(() => {
         try {
@@ -128,25 +117,6 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
             console.error("Failed to load data from localStorage", error);
             setPortfolio([]);
             setWatchlist([]);
-<<<<<<< HEAD
-            setHistoricalData([]);
-        }
-    }, []);
-
-    const totalValue = useMemo(() => {
-        if (isLoading || Object.keys(livePrices).length === 0) return 0;
-        return portfolio.reduce((acc, asset) => {
-            if (asset.type === 'deposit') {
-                if (asset.depositType === 'fx' && asset.currency) {
-                    const price = livePrices[`currency-${asset.currency}`] || 0;
-                    return acc + asset.amount * price;
-                }
-                return acc + asset.amount;
-            }
-            const price = livePrices[`${asset.type}-${asset.name}`] || 0;
-            return acc + price * asset.amount;
-        }, 0);
-=======
             setHistoricalData(initialHistoricalData);
         }
     }, []);
@@ -176,7 +146,6 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
             groups[asset.type].assets.push({ ...asset, price, value });
         });
         return groups;
->>>>>>> 9506d82 (Çakışmaları çözdüm)
     }, [portfolio, livePrices, isLoading]);
 
 
@@ -191,27 +160,6 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     }, [portfolio, watchlist, historicalData]);
     
     useEffect(() => {
-<<<<<<< HEAD
-        if (isLoading || totalValue === 0) return;
-
-        setHistoricalData(prevData => {
-            const now = new Date();
-            const lastRecord = prevData[prevData.length - 1];
-            
-            // Record data every hour or if it's the first data point
-            const shouldRecord = !lastRecord || (now.getTime() - new Date(lastRecord.date).getTime() > 60 * 60 * 1000);
-
-            if (shouldRecord) {
-                const newRecord: HistoricalRecord = { date: now.toISOString(), value: totalValue };
-                // Keep history to a reasonable size, e.g., last 365 records
-                const updatedHistory = [...prevData, newRecord].slice(-365);
-                return updatedHistory;
-            }
-            return prevData;
-        });
-
-    }, [totalValue, isLoading]);
-=======
         if (isLoading || Object.keys(groupedPortfolio).length === 0) return;
 
         setHistoricalData(prevData => {
@@ -240,7 +188,6 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
         });
 
     }, [groupedPortfolio, isLoading]);
->>>>>>> 9506d82 (Çakışmaları çözdüm)
 
 
     const handleToggleWatchlist = useCallback((assetKey: string) => {
@@ -376,11 +323,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 
     const handleClearPortfolio = useCallback(() => {
         setPortfolio([]);
-<<<<<<< HEAD
-        setHistoricalData([]);
-=======
         setHistoricalData(initialHistoricalData);
->>>>>>> 9506d82 (Çakışmaları çözdüm)
         toast({
             title: "Veriler Silindi",
             description: "Tüm portföy verileriniz başarıyla silindi.",
@@ -390,14 +333,6 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
     const handleLoadSampleData = useCallback(() => {
         setPortfolio(samplePortfolio);
         const now = new Date();
-<<<<<<< HEAD
-        const sampleHistory = [
-            { date: new Date(now.setDate(now.getDate() - 30)).toISOString(), value: 250000 },
-            { date: new Date(now.setDate(now.getDate() + 5)).toISOString(), value: 255000 },
-            { date: new Date(now.setDate(now.getDate() + 10)).toISOString(), value: 265000 },
-            { date: new Date(now.setDate(now.getDate() + 15)).toISOString(), value: 260000 },
-        ];
-=======
         const sampleHistory: GroupHistoricalData = {
           total: [
             { date: new Date(new Date().setDate(now.getDate() - 30)).toISOString(), value: 410000 },
@@ -432,7 +367,6 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
           silver: [],
           cash: [],
         };
->>>>>>> 9506d82 (Çakışmaları çözdüm)
         setHistoricalData(sampleHistory);
         toast({ title: "Örnek Veri Yüklendi", description: "Test amaçlı portföy verileri yüklendi." });
     }, [toast]);
@@ -490,11 +424,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
                     }));
                      setPortfolio(revivedPortfolio);
                      setWatchlist([]);
-<<<<<<< HEAD
-                     setHistoricalData([]);
-=======
                      setHistoricalData(initialHistoricalData);
->>>>>>> 9506d82 (Çakışmaları çözdüm)
                 } else { // Handle new format
                     if (importedData.portfolio && Array.isArray(importedData.portfolio)) {
                         const revivedPortfolio = importedData.portfolio.map((asset: any) => ({
@@ -506,16 +436,11 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
                     if (importedData.watchlist && Array.isArray(importedData.watchlist)) {
                         setWatchlist(importedData.watchlist);
                     }
-<<<<<<< HEAD
-                    if (importedData.history && Array.isArray(importedData.history)) {
-                        setHistoricalData(importedData.history);
-=======
                     if (importedData.history) {
                         const revivedHistory = { ...initialHistoricalData, ...importedData.history };
                         setHistoricalData(revivedHistory);
                     } else {
                         setHistoricalData(initialHistoricalData);
->>>>>>> 9506d82 (Çakışmaları çözdüm)
                     }
                 }
                 
