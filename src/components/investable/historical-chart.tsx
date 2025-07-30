@@ -19,6 +19,17 @@ export default function HistoricalChart({ data }: HistoricalChartProps) {
     },
   };
 
+  const yAxisDomain = (data: { total: number }[]): [number, number] => {
+    if (data.length === 0) {
+      return [0, 1000];
+    }
+    const values = data.map(d => d.total);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const padding = (max - min) * 0.1; // %10 padding
+    return [Math.max(0, min - padding), max + padding];
+  }
+
   return (
     <ChartContainer config={chartConfig} className="h-[250px] sm:h-[280px] w-full">
       <AreaChart
@@ -53,7 +64,7 @@ export default function HistoricalChart({ data }: HistoricalChartProps) {
             })
             : value
           }
-          domain={['dataMin - 50000', 'dataMax + 50000']}
+          domain={yAxisDomain(data)}
         />
         <ChartTooltip
           cursor={true}
